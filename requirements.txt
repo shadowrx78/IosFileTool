@@ -1,0 +1,6 @@
+# 界面与 iOS 锁屏协议。Windows 上还要装 Apple 设备或 iTunes，本机才有 Apple Mobile Device 驱动。
+PySide6>=6.5.0
+pymobiledevice3>=7.0.0
+
+# Windows 原生虚拟文件拖放（FileGroupDescriptor / IStream / IAsyncOperation）
+pywin32>=311; sys_platform == "win32"
