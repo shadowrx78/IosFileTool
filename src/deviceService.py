@@ -225,6 +225,21 @@ class DeviceService:
     def listDir(self, remoteDir):
         return self._call(self._listDir(remoteDir))
 
+    # 在当前目录下新建空文件夹。同名时不覆盖
+    def makeDir(self, remoteDir, name):
+        return self._call(self._makeDir(remoteDir, name))
+
+    # 名称只作为这一层的一段，不能带路径
+    async def _makeDir(self, remoteDir, name):
+        name = (name or "").strip()
+        if not name or name in (".", "..") or "/" in name or "\\" in name:
+            raise RuntimeError("文件夹名称不能为空，也不能包含斜杠")
+        house = self._requireHouse()
+        remotePath = posixpath.join(remoteDir or "/", name)
+        if await house.exists(remotePath):
+            raise RuntimeError("已经有同名文件或文件夹：%s" % name)
+        await house.makedirs(remotePath)
+
     # 虚拟目录描述只取名称、类型和长度，不读取文件内容
     def describeDrag(self, tlTm):
         return self._call(self._describeDrag(tlTm))

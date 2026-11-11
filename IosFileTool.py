@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -204,6 +205,8 @@ class MainGui(QMainWindow):
         self.importFileBtn.clicked.connect(self.onImportFile)
         self.importDirBtn = QPushButton("导入文件夹")
         self.importDirBtn.clicked.connect(self.onImportDir)
+        self.newFolderBtn = QPushButton("新建文件夹")
+        self.newFolderBtn.clicked.connect(self.onNewFolder)
         self.exportBtn = QPushButton("导出选中")
         self.exportBtn.clicked.connect(self.onExport)
         self.deleteBtn = QPushButton("删除选中")
@@ -212,6 +215,7 @@ class MainGui(QMainWindow):
         row.addWidget(self.refreshDirBtn)
         row.addWidget(self.importFileBtn)
         row.addWidget(self.importDirBtn)
+        row.addWidget(self.newFolderBtn)
         row.addWidget(self.exportBtn)
         row.addWidget(self.deleteBtn)
         row.addStretch(1)
@@ -308,6 +312,30 @@ class MainGui(QMainWindow):
         if not localDir:
             return
         self._enqueuePush([localDir])
+
+    # 在当前手机目录下新建一个空文件夹
+    def onNewFolder(self):
+        if not self._bundleId:
+            self._warn("先打开一个 App")
+            return
+        name, ok = QInputDialog.getText(self, PROGRAM_TITLE_NAME, "文件夹名称", text="新建文件夹")
+        if not ok:
+            return
+        name = name.strip()
+        if not name or name in (".", "..") or "/" in name or "\\" in name:
+            self._warn("文件夹名称不能为空，也不能包含斜杠")
+            return
+        remoteDir = self._remoteDir
+        self._startJob(
+            lambda: self.device.makeDir(remoteDir, name),
+            lambda _r: self._afterNewFolder(remoteDir, name),
+            "新建文件夹 %s" % name,
+        )
+
+    # 建好后回到这一层，让新文件夹出现在列表和目录树里
+    def _afterNewFolder(self, remoteDir, name):
+        self._status("已新建文件夹：%s" % name)
+        self._loadDir(remoteDir)
 
     # 把选中的文件或目录导出到本地文件夹
     def onExport(self):
@@ -820,6 +848,7 @@ class MainGui(QMainWindow):
         menu.addSeparator()
         menu.addAction("导入文件…").triggered.connect(self.onImportFile)
         menu.addAction("导入文件夹…").triggered.connect(self.onImportDir)
+        menu.addAction("新建文件夹").triggered.connect(self.onNewFolder)
         actExport = menu.addAction("导出到…")
         actExport.setEnabled(len(tlTm) > 0)
         actExport.triggered.connect(self.onExport)
@@ -942,7 +971,7 @@ class MainGui(QMainWindow):
         self.pathBar.setEnabled(canBrowse and not self._dragActive)
         self.fileBrowser.setEnabled(canBrowse)
         for btn in (self.upBtn, self.refreshDirBtn, self.importFileBtn, self.importDirBtn,
-                    self.exportBtn, self.deleteBtn):
+                    self.newFolderBtn, self.exportBtn, self.deleteBtn):
             btn.setEnabled(canBrowse and not self._dragActive)
         self.upBtn.setEnabled(canBrowse and not self._dragActive and self._remoteDir != "/")
         self.deleteBtn.setEnabled(canBrowse and not self._dragActive and not queueBusy and not self._clipboardBusy)
